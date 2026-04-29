@@ -1,3 +1,31 @@
+<?php
+session_start();
+include 'config.php';
+
+if(!isset($_SESSION['user_id'])) {
+    header("Location: connexion.php");
+    exit();
+}
+
+?>
+<?php
+
+$user_id = $_SESSION['user_id'];
+
+// Total dépenses
+$sqlDepenses = $conn->prepare("SELECT SUM(montant) AS total_depenses FROM depenses WHERE utilisateur_id = ?");
+$sqlDepenses->execute([$user_id]);
+$totalDepenses = $sqlDepenses->fetch()['total_depenses'] ?? 0;
+
+// Total revenus
+$sqlRevenus = $conn->prepare("SELECT SUM(montant) AS total_revenus FROM revenus WHERE utilisateur_id = ?");
+$sqlRevenus->execute([$user_id]);
+$totalRevenus = $sqlRevenus->fetch()['total_revenus'] ?? 0;
+
+// Balance
+$balance = $totalRevenus - $totalDepenses;
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,7 +36,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <section class="header">
@@ -39,14 +66,14 @@
         <section class="balance">
             <div class="balance-content">
                 <p class="balance-content-texte">Balance actuelle</p>
-                <p class="balance-content-euro">2000,00€</p>
+                <p class="balance-content-euro"><?php echo number_format($balance, 2, ',', ' '); ?>€</p>
             </div>
         </section>
 
         <section class="depenses">
             <div class="depenses-content">
                 <p class="depenses-content-texte">Dépenses actuelles</p>
-                <p class="depenses-content-euro">1294,56€</p>
+                <p class="depenses-content-euro"><?php echo number_format($totalDepenses, 2, ',', ' '); ?>€</p>
             </div>
         </section>
 

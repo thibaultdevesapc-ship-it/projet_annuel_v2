@@ -1,0 +1,24 @@
+Create DATABASE Vive;
+
+CREATE TABLE utilisateurs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nom VARCHAR(100),
+    email VARCHAR(100) UNIQUE,
+    mot_de_passe VARCHAR(255)
+);
+
+CREATE TABLE revenus (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    utilisateur_id INT,
+    montant DECIMAL(10,2),
+    FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id)
+);
+
+CREATE TABLE depenses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    utilisateur_id INT,
+    date_depense DATE,
+    categorie VARCHAR(100),
+    montant DECIMAL(10,2),
+    FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id)
+);
