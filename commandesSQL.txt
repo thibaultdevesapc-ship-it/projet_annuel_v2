@@ -1,24 +1,27 @@
-Create DATABASE Vive;
+CREATE DATABASE IF NOT EXISTS Vive;
+USE Vive;
 
-CREATE TABLE utilisateurs (
+CREATE TABLE IF NOT EXISTS utilisateurs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nom VARCHAR(100),
     email VARCHAR(100) UNIQUE,
     mot_de_passe VARCHAR(255)
 );
 
-CREATE TABLE revenus (
+CREATE TABLE IF NOT EXISTS revenus (
     id INT AUTO_INCREMENT PRIMARY KEY,
     utilisateur_id INT,
     montant DECIMAL(10,2),
+    compte_type VARCHAR(20) NOT NULL DEFAULT 'perso',
     FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id)
 );
 
-CREATE TABLE depenses (
+CREATE TABLE IF NOT EXISTS depenses (
     id INT AUTO_INCREMENT PRIMARY KEY,
     utilisateur_id INT,
     date_depense DATE,
     categorie VARCHAR(100),
     montant DECIMAL(10,2),
+    compte_type VARCHAR(20) NOT NULL DEFAULT 'perso',
     FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id)
 );

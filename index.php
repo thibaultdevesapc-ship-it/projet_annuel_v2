@@ -2,32 +2,62 @@
 session_start();
 include 'config.php';
 
-if(!isset($_SESSION['user_id'])) {
+if (!isset($_SESSION['user_id'])) {
     header("Location: connexion.php");
     exit();
 }
 
-?>
-<?php
-
 $user_id = $_SESSION['user_id'];
+$compteType = ($_GET['compte'] ?? 'perso') === 'pro' ? 'pro' : 'perso';
+$autreCompte = $compteType === 'pro' ? 'perso' : 'pro';
+$nomCompte = $compteType === 'pro' ? 'Vive PRO' : 'Vive';
+$categoriesForm = $compteType === 'pro'
+    ? ['Fournitures', 'Transport pro', 'Repas pro', 'Logiciels', 'Loyer pro', 'Factures pro', 'Clients', 'Impôts']
+    : ['Courses', 'Transport', 'Divertissement', 'Factures', 'Loyer', 'Restaurant', 'Travail'];
 
-// Total dépenses
-$sqlDepenses = $conn->prepare("SELECT SUM(montant) AS total_depenses FROM depenses WHERE utilisateur_id = ?");
-$sqlDepenses->execute([$user_id]);
-$totalDepenses = $sqlDepenses->fetch()['total_depenses'] ?? 0;
+$sqlDepenses = $conn->prepare("SELECT COALESCE(SUM(montant), 0) AS total_depenses FROM depenses WHERE utilisateur_id = ? AND compte_type = ?");
+$sqlDepenses->execute([$user_id, $compteType]);
+$totalDepenses = (float) $sqlDepenses->fetch()['total_depenses'];
 
-// Total revenus
-$sqlRevenus = $conn->prepare("SELECT SUM(montant) AS total_revenus FROM revenus WHERE utilisateur_id = ?");
-$sqlRevenus->execute([$user_id]);
-$totalRevenus = $sqlRevenus->fetch()['total_revenus'] ?? 0;
+$sqlRevenus = $conn->prepare("SELECT COALESCE(SUM(montant), 0) AS total_revenus FROM revenus WHERE utilisateur_id = ? AND compte_type = ?");
+$sqlRevenus->execute([$user_id, $compteType]);
+$totalRevenus = (float) $sqlRevenus->fetch()['total_revenus'];
 
-// Balance
 $balance = $totalRevenus - $totalDepenses;
+
+$sqlCategories = $conn->prepare("
+    SELECT categorie, SUM(montant) AS total
+    FROM depenses
+    WHERE utilisateur_id = ? AND compte_type = ?
+    GROUP BY categorie
+    ORDER BY total DESC
+");
+$sqlCategories->execute([$user_id, $compteType]);
+$categories = $sqlCategories->fetchAll();
+
+$maxCategorie = 0;
+foreach ($categories as $categorie) {
+    $maxCategorie = max($maxCategorie, (float) $categorie['total']);
+}
+
+$sqlHistorique = $conn->prepare("
+    SELECT id, date_depense, categorie, montant
+    FROM depenses
+    WHERE utilisateur_id = ? AND compte_type = ?
+    ORDER BY date_depense DESC, id DESC
+");
+$sqlHistorique->execute([$user_id, $compteType]);
+$depenses = $sqlHistorique->fetchAll();
+$nbOperations = count($depenses);
+
+function formatEuro(float $montant): string
+{
+    return number_format($montant, 2, ',', ' ') . '€';
+}
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -44,21 +74,21 @@ $balance = $totalRevenus - $totalDepenses;
         </div>
 
         <div class="header-logo">
-            <img src="logo.webp" class="header-logo-image">
-            <p class="header-logo-texte">Vive</p>
+            <img src="logo.webp" class="header-logo-image" alt="">
+            <p class="header-logo-texte"><?= htmlspecialchars($nomCompte) ?></p>
         </div>
-        
 
         <div class="header-droite">
-            <div class="header-revenu">
+            <form method="post" action="revenu.php" class="header-revenu">
                 <p class="header-revenu-texte">MON REVENU (€)</p>
-                <input type="number" class="header-revenu-revenu">
+                <input type="hidden" name="compte_type" value="<?= htmlspecialchars($compteType) ?>">
+                <input type="number" name="montant" class="header-revenu-revenu" min="0.01" step="0.01" required>
                 <button type="submit" class="header-revenu-bouton">Confirmer</button>
-            </div>
+            </form>
 
-            <div class="header-connexion">
-                <img href="#" src="connexion.webp" class="header-connexion-image">
-            </div>
+            <a class="header-connexion" href="index.php?compte=<?= $autreCompte ?>" title="Changer de compte">
+                <img src="connexion.webp" class="header-connexion-image" alt="Changer de compte">
+            </a>
         </div>
     </section>
 
@@ -66,84 +96,68 @@ $balance = $totalRevenus - $totalDepenses;
         <section class="balance">
             <div class="balance-content">
                 <p class="balance-content-texte">Balance actuelle</p>
-                <p class="balance-content-euro"><?php echo number_format($balance, 2, ',', ' '); ?>€</p>
+                <p class="balance-content-euro"><?= formatEuro($balance) ?></p>
             </div>
         </section>
 
         <section class="depenses">
             <div class="depenses-content">
                 <p class="depenses-content-texte">Dépenses actuelles</p>
-                <p class="depenses-content-euro"><?php echo number_format($totalDepenses, 2, ',', ' '); ?>€</p>
+                <p class="depenses-content-euro"><?= formatEuro($totalDepenses) ?></p>
             </div>
         </section>
 
         <section class="diagramme">
             <h2 class="diagramme-titre">Répartition des dépenses</h2>
             <div class="diagramme-container">
-                <div class="row">
-                    <span>Courses</span>
-                    <div class="bar" style="width: 55%;"></div>
-                    <p class="prix">275,00€</p>
-                </div>
-                <div class="row">
-                    <span>Transport</span>
-                    <div class="bar" style="width: 20%;"></div>
-                    <p class="prix">100,00€</p>
-                </div>
-                <div class="row">
-                    <span>Divertissement</span>
-                    <div class="bar" style="width: 10%;"></div>
-                    <p class="prix">50,00€</p>
-                </div>
-                <div class="row">
-                    <span>Loyer</span>
-                    <div class="bar" style="width: 8%;"></div>
-                    <p class="prix">400,00€</p>
-                </div>
-                <div class="row">
-                    <span>Factures</span>
-                    <div class="bar" style="width: 5%;"></div>
-                    <p class="prix">25,00€</p>
-                </div>
-                <div class="row">
-                    <span>Travail</span>
-                    <div class="bar" style="width: 2%;"></div>
-                    <p class="prix">100,00€</p>
-                </div>
+                <?php if ($categories) { ?>
+                    <?php foreach ($categories as $categorie) {
+                        $totalCategorie = (float) $categorie['total'];
+                        $largeur = $maxCategorie > 0 ? max(4, ($totalCategorie / $maxCategorie) * 100) : 0;
+                    ?>
+                        <div class="row">
+                            <span><?= htmlspecialchars($categorie['categorie']) ?></span>
+                            <div class="bar-wrap">
+                                <div class="bar" style="width: <?= $largeur ?>%;"></div>
+                            </div>
+                            <p class="prix"><?= formatEuro($totalCategorie) ?></p>
+                        </div>
+                    <?php } ?>
+                <?php } else { ?>
+                    <p class="empty-state">Aucune dépense enregistrée.</p>
+                <?php } ?>
             </div>
         </section>
 
         <section class="formulaire">
             <div class="formulaire-t">
                 <h2 class="formulaire-t-titre">Déclarer une dépense</h2>
-                <p class="formulaire-t-texte">Remplire ce formulaire vous permet de déclarer toutes vos nouvelles dépenses.</p>
+                <p class="formulaire-t-texte">Remplir ce formulaire vous permet de déclarer toutes vos nouvelles dépenses.</p>
             </div>
 
             <form method="post" action="form.php" class="formulaire-form">
+                <input type="hidden" name="compte_type" value="<?= htmlspecialchars($compteType) ?>">
 
-                <label for="date" class="formulaire-label 1">DATE</label>
-                <input type="date" id="date" name="date" class="formulaire-input-select 1"/>
+                <label for="date" class="formulaire-label">DATE</label>
+                <input type="date" id="date" name="date" class="formulaire-input-select" required>
 
-                <label for="montant" class="formulaire-label 2">MONTANT (€)</label>
-                <input type="number" id="montant" name="montant" class="formulaire-input-select 2"/>
+                <label for="montant" class="formulaire-label">MONTANT (€)</label>
+                <input type="number" id="montant" name="montant" class="formulaire-input-select" min="0.01" step="0.01" required>
 
-                <label for="categorie" class="formulaire-label 3">CATÉGORIE</label>
-                <select id="categorie" name="categorie" class="formulaire-input-select 3">
-                    <option value="Courses">Courses</option>
-                    <option value="Transport">Transport</option>
-                    <option value="Divertissement">Divertissement</option>
-                    <option value="Factures">Factures</option>
-                    <option value="Loyer">Loyer</option>
-                    <option value="Restaurant">Restaurant</option>
+                <label for="categorie" class="formulaire-label">CATÉGORIE</label>
+                <select id="categorie" name="categorie" class="formulaire-input-select" required>
+                    <?php foreach ($categoriesForm as $categorieForm) { ?>
+                        <option value="<?= htmlspecialchars($categorieForm) ?>"><?= htmlspecialchars($categorieForm) ?></option>
+                    <?php } ?>
                 </select>
-                <input type="submit" name="valider" value="VALIDER" class="formulaire-bouton"/>
+                <input type="submit" name="valider" value="VALIDER" class="formulaire-bouton">
             </form>
         </section>
 
         <section class="historique">
             <div class="historique-header">
                 <h2 class="historique-header-titre">Historique des dépenses</h2>
-                <p class="historique-header-nbOperations">1 opération</p>
+                <p class="historique-header-nbOperations"><?= $nbOperations ?> opération<?= $nbOperations > 1 ? 's' : '' ?></p>
             </div>
             <div class="historique-labels">
                 <div>DATE</div>
@@ -151,12 +165,22 @@ $balance = $totalRevenus - $totalDepenses;
                 <div>MONTANT</div>
                 <div>ACTIONS</div>
             </div>
-            <div class="historique-dépenses">
-                <div>2026-01-29</div>
-                <div>Nourriture</div>
-                <div>100,00€</div>
-                <div>Supprimer</div>
-            </div>
+            <?php if ($depenses) { ?>
+                <?php foreach ($depenses as $depense) { ?>
+                    <div class="historique-depenses">
+                        <div><?= htmlspecialchars($depense['date_depense']) ?></div>
+                        <div><?= htmlspecialchars($depense['categorie']) ?></div>
+                        <div><?= formatEuro((float) $depense['montant']) ?></div>
+                        <form method="post" action="supprimer_depense.php">
+                            <input type="hidden" name="id" value="<?= (int) $depense['id'] ?>">
+                            <input type="hidden" name="compte_type" value="<?= htmlspecialchars($compteType) ?>">
+                            <button type="submit" class="historique-delete">Supprimer</button>
+                        </form>
+                    </div>
+                <?php } ?>
+            <?php } else { ?>
+                <p class="historique-empty">Aucune dépense pour ce compte.</p>
+            <?php } ?>
         </section>
     </main>
 
