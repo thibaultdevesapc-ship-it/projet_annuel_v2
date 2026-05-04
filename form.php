@@ -1,15 +1,26 @@
 <?php
+session_start();
 include 'config.php';
 
-$date = $_POST['date'];
-$montant = $_POST['montant'];
-$categorie = $_POST['categorie'];
+if (!isset($_SESSION['user_id'])) {
+    header("Location: connexion.php");
+    exit();
+}
 
-$sql = "INSERT INTO depenses (date_depense, categorie, montant)
-VALUES (?, ?, ?)";
+$date = $_POST['date'] ?? '';
+$montant = filter_input(INPUT_POST, 'montant', FILTER_VALIDATE_FLOAT);
+$categorie = $_POST['categorie'] ?? '';
+$compteType = $_POST['compte_type'] ?? 'perso';
+$compteType = $compteType === 'pro' ? 'pro' : 'perso';
 
-$stmt = $conn->prepare($sql);
-$stmt->execute([$date, $categorie, $montant]);
+if ($date !== '' && $montant !== false && $montant > 0 && $categorie !== '') {
+    $sql = "INSERT INTO depenses (utilisateur_id, date_depense, categorie, montant, compte_type)
+    VALUES (?, ?, ?, ?, ?)";
 
-header("Location: index.html");
+    $stmt = $conn->prepare($sql);
+    $stmt->execute([$_SESSION['user_id'], $date, $categorie, $montant, $compteType]);
+}
+
+header("Location: index.php?compte=" . $compteType);
+exit();
 ?>
