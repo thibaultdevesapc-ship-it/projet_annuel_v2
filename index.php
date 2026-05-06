@@ -8,7 +8,12 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id = $_SESSION['user_id'];
-$compteType = ($_GET['compte'] ?? 'perso') === 'pro' ? 'pro' : 'perso';
+$compte = $_GET['compte'] ?? 'perso';
+if ($compte === 'pro') {
+    $compteType = 'pro';
+} else {
+    $compteType = 'perso';
+}
 $autreCompte = $compteType === 'pro' ? 'perso' : 'pro';
 $nomCompte = $compteType === 'pro' ? 'Vive PRO' : 'Vive';
 $categoriesForm = $compteType === 'pro'
@@ -74,7 +79,7 @@ function formatEuro(float $montant): string
         </div>
 
         <div class="header-logo">
-            <img src="logo.webp" class="header-logo-image" alt="">
+            <img src="logo.webp" class="header-logo-image" alt="logo-vive">
             <p class="header-logo-texte"><?= htmlspecialchars($nomCompte) ?></p>
         </div>
 
@@ -86,9 +91,19 @@ function formatEuro(float $montant): string
                 <button type="submit" class="header-revenu-bouton">Confirmer</button>
             </form>
 
-            <a class="header-connexion" href="index.php?compte=<?= $autreCompte ?>" title="Changer de compte">
-                <img src="connexion.webp" class="header-connexion-image" alt="Changer de compte">
-            </a>
+            <div class="header-connexion-container">
+                <button type="button" class="header-connexion" id="header-connexion-btn">
+                    <img src="connexion.webp" class="header-connexion-image" alt="Menu">
+                </button>
+                <div class="header-connexion-menu" id="header-connexion-menu">
+                    <a href="index.php?compte=<?= $autreCompte ?>" class="header-connexion-menu-item">
+                        Changer de type de compte
+                    </a>
+                    <a href="deconnexion.php" class="header-connexion-menu-item">
+                        Déconnexion
+                    </a>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -168,13 +183,13 @@ function formatEuro(float $montant): string
             <?php if ($depenses) { ?>
                 <?php foreach ($depenses as $depense) { ?>
                     <div class="historique-depenses">
-                        <div><?= htmlspecialchars($depense['date_depense']) ?></div>
-                        <div><?= htmlspecialchars($depense['categorie']) ?></div>
-                        <div><?= formatEuro((float) $depense['montant']) ?></div>
+                        <div class="historique-date"><?= htmlspecialchars($depense['date_depense']) ?></div>
+                        <div class="historique-categorie"><?= htmlspecialchars($depense['categorie']) ?></div>
+                        <div class="historique-montant"><?= formatEuro((float) $depense['montant']) ?></div>
                         <form method="post" action="supprimer_depense.php">
                             <input type="hidden" name="id" value="<?= (int) $depense['id'] ?>">
                             <input type="hidden" name="compte_type" value="<?= htmlspecialchars($compteType) ?>">
-                            <button type="submit" class="historique-delete">Supprimer</button>
+                            <button type="submit" class="historique-supprimer">Supprimer</button>
                         </form>
                     </div>
                 <?php } ?>

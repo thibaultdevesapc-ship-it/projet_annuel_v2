@@ -19,7 +19,7 @@ body {
     margin: 0;
     padding: 0;
     min-height: 100vh;
-    background-color: #000;
+    background-color: red;
     color: #fff;
     font-family: 'Inter', sans-serif;
     margin-left: 30px;
@@ -120,11 +120,19 @@ body {
     cursor: pointer;
 }
 
+.header-connexion-container {
+    position: relative;
+}
+
 .header-connexion {
     background-color: #141414;
     padding: 15px;
     border-radius: 30px;
     border: 3px solid black;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .header-connexion:hover {
@@ -136,6 +144,53 @@ body {
 .header-connexion-image {
     max-height: 50px;
     width: auto;
+}
+
+.header-connexion-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    background-color: #141414;
+    border: 3px solid black;
+    border-radius: 15px;
+    min-width: 250px;
+    visibility: hidden;
+    opacity: 0;
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.header-connexion-menu.active {
+    visibility: visible;
+    opacity: 1;
+}
+
+.header-connexion-menu-item {
+    padding: 15px 20px;
+    color: #fff;
+    text-decoration: none;
+    border-bottom: 1px solid #333;
+    transition: background-color 0.2s ease;
+    font-weight: 500;
+}
+
+.header-connexion-menu-item:last-child {
+    border-bottom: none;
+}
+
+.header-connexion-menu-item:hover {
+    background-color: #2a2a2a;
+}
+
+.header-connexion-menu-item:first-child:hover {
+    border-radius: 12px 12px 0 0;
+}
+
+.header-connexion-menu-item:last-child:hover {
+    border-radius: 0 0 12px 12px;
 }
 
 /* ----------------------------------------------CONTAINER------------------------------------------ */
@@ -378,6 +433,5 @@ body {
 .historique-dépenses {
     grid-row: 3;
     grid-column: span 4;
-    display: flex;
-    justify-content: space-between;
+    background-color: white;
 }
