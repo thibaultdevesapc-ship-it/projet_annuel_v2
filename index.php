@@ -45,6 +45,28 @@ foreach ($categories as $categorie) {
     $maxCategorie = max($maxCategorie, (float) $categorie['total']);
 }
 
+// Créer un tableau associatif des dépenses par catégorie
+$categoriesData = [];
+foreach ($categories as $categorie) {
+    $categoriesData[$categorie['categorie']] = (float) $categorie['total'];
+}
+
+// Créer un tableau trié par pourcentage décroissant
+$categoriesOrdre = [];
+foreach ($categoriesForm as $categorie) {
+    $montantCategorie = $categoriesData[$categorie] ?? 0;
+    $pourcentage = $totalDepenses > 0 ? ($montantCategorie / $totalDepenses) * 100 : 0;
+    $categoriesOrdre[] = [
+        'nom' => $categorie,
+        'montant' => $montantCategorie,
+        'pourcentage' => $pourcentage
+    ];
+}
+// Trier par pourcentage décroissant
+usort($categoriesOrdre, function($a, $b) {
+    return $b['pourcentage'] <=> $a['pourcentage'];
+});
+
 $sqlHistorique = $conn->prepare("
     SELECT id, date_depense, categorie, montant
     FROM depenses
@@ -124,22 +146,16 @@ function formatEuro(float $montant): string
 
         <section class="diagramme">
             <h2 class="diagramme-titre">Répartition des dépenses</h2>
-            <div class="diagramme-container">
-                <?php if ($categories) { ?>
-                    <?php foreach ($categories as $categorie) {
-                        $totalCategorie = (float) $categorie['total'];
-                        $largeur = $maxCategorie > 0 ? max(4, ($totalCategorie / $maxCategorie) * 100) : 0;
-                    ?>
-                        <div class="row">
-                            <span><?= htmlspecialchars($categorie['categorie']) ?></span>
-                            <div class="bar-wrap">
-                                <div class="bar" style="width: <?= $largeur ?>%;"></div>
-                            </div>
-                            <p class="prix"><?= formatEuro($totalCategorie) ?></p>
-                        </div>
-                    <?php } ?>
-                <?php } else { ?>
-                    <p class="empty-state">Aucune dépense enregistrée.</p>
+            <div class="diagramme-barchart">
+                <?php foreach($categoriesOrdre as $categorie){ ?>
+                    <div class="diagramme-row">
+                        <span class="diagramme-label"><?php echo $categorie['nom'] ?></span>
+                        <div class="diagramme-bar" style="width: <?= number_format($categorie['pourcentage'], 2) ?>%;"></div>
+                        <?php if ($categorie['montant'] > 0) { ?>
+                        <p class="diagramme-txt"><?= formatEuro($categorie['montant']) ?></p>
+                        <p class="diagramme-pourcent"><?= number_format($categorie['pourcentage'], 2) ?>%</p>
+                        <?php } ?>
+                    </div>
                 <?php } ?>
             </div>
         </section>
@@ -180,22 +196,24 @@ function formatEuro(float $montant): string
                 <div>MONTANT</div>
                 <div>ACTIONS</div>
             </div>
-            <?php if ($depenses) { ?>
-                <?php foreach ($depenses as $depense) { ?>
-                    <div class="historique-depenses">
-                        <div class="historique-date"><?= htmlspecialchars($depense['date_depense']) ?></div>
-                        <div class="historique-categorie"><?= htmlspecialchars($depense['categorie']) ?></div>
-                        <div class="historique-montant"><?= formatEuro((float) $depense['montant']) ?></div>
-                        <form method="post" action="supprimer_depense.php">
-                            <input type="hidden" name="id" value="<?= (int) $depense['id'] ?>">
-                            <input type="hidden" name="compte_type" value="<?= htmlspecialchars($compteType) ?>">
-                            <button type="submit" class="historique-supprimer">Supprimer</button>
-                        </form>
-                    </div>
+            <div class="historique-depenses">
+                <?php if ($depenses) { ?>
+                    <?php foreach ($depenses as $depense) { ?>
+                        <div class="historique-dep">
+                            <div class="historique-date"><?= htmlspecialchars($depense['date_depense']) ?></div>
+                            <div class="historique-categorie"><?= htmlspecialchars($depense['categorie']) ?></div>
+                            <div class="historique-montant"><?= formatEuro((float) $depense['montant']) ?></div>
+                            <form method="post" action="supprimer_depense.php">
+                                <input type="hidden" name="id" value="<?= (int) $depense['id'] ?>">
+                                <input type="hidden" name="compte_type" value="<?= htmlspecialchars($compteType) ?>">
+                                <button type="submit" class="historique-supprimer">Supprimer</button>
+                            </form>
+                        </div>
+                    <?php } ?>
+                <?php } else { ?>
+                    <p class="historique-vide">Aucune dépense pour ce compte.</p>
                 <?php } ?>
-            <?php } else { ?>
-                <p class="historique-empty">Aucune dépense pour ce compte.</p>
-            <?php } ?>
+            </div>
         </section>
     </main>
 
